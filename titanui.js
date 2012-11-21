@@ -77,3 +77,76 @@ exports.BounceAnimation = function (viewToAnimate){
 	
 	return a1;
 }
+
+/**
+ * Creates a facebook like box and registers a callback for when the like occurs
+ * 
+ * @param settings {Object} Configuration object
+ * @param settings.appId {String} Facebook App Id
+ * @param settings.siteUrl {String} Url for your application's website (required so Facebook doesn't see this as spam)
+ * @param settings.likeUrl {String} Url to the facebook page that will be liked
+ * @param settings.send {Boolean} Whether or not the send button should be displayed
+ * @param settings.colorScheme {String} Like box color scheme. Dark or Light only.
+ * @param settings.showFaces {Boolean} Whether or not faces should be shown
+ * @param settings.stream {Boolean} Whether or not to show page stream
+ * @param settings.header {Boolean} Whether or not to show the header
+ * @param settings.success {Function} The callback for a successful "Like"
+ */
+exports.FacebookLikeBox = function(settings){
+	
+	settings = settings || {};
+	var allowedColorSchemes = ['dark', 'light'];
+	var allowedFonts = []
+	
+	//Defaults
+	settings.send = typeof(settings.send) == "boolean" ? settings.send : false;
+	settings.colorScheme = allowedColorSchemes.indexOf(settings.colorScheme) > -1 ? settings.colorScheme : 'light';
+	settings.showFaces = typeof(settings.showFaces) == "boolean" ? settings.showFaces : false;
+	settings.stream = typeof(settings.stream) == "boolean" ? settings.stream : false;
+	settings.header = typeof(settings.header) == "boolean" ? settings.header : false;
+	settings.success = settings.success && typeof(settings.success) == "function" ? settings.success : funcion(){ Ti.API.info("Page Liked"); };
+	
+	var wView = Ti.UI.createWebView({
+		backgroundColor: 'transparent',
+		width: 325,
+		opacity: 1.0
+	});
+	
+	//Fill the window with the like box xfbml code and the callback upon like being clicked
+	var html = [];
+
+	html.push('<html>',
+		'<body style="background-color: \'transparent\';">',
+		'<div id="fb-root"></div>',
+		"<script>",
+			'window.fbAsyncInit = function() {',
+		    	'FB.init({appId:'+settings.appId+', xfbml:true});', 
+		    	'FB.Event.subscribe("edge.create", function(e){ window.location = "event:like"; });',
+		  	'};',
+		  '(function(d, debug){',
+		     'var js, id = "facebook-jssdk", ref = d.getElementsByTagName("script")[0];',
+		     'if (d.getElementById(id)) {return;}',
+		     'js = d.createElement("script"); js.id = id; js.async = true;',
+		     'js.src = "//connect.facebook.net/en_US/all" + (debug ? "/debug" : "") + ".js";',
+		     'ref.parentNode.insertBefore(js, ref);',
+		   '}(document, false));',
+		'</script>',	
+		'<fb:like-box href="'+settings.likeUrl+'" ',
+			'send="'+settings.send+'" ',
+			'colorscheme="'+colorscheme+'" ',
+			'width="325" show_faces="'+settings.showFaces+'" ',
+			'stream="'+settings.stream+'" ',
+			'header="'+settings.header+'">',
+		'</fb:like-box>',
+	'</html>');
+
+	wView.setHtml(html.join(''), { baseURL:settings.siteUrl });
+	
+	wView.addEventListener('beforeload', function(e){	
+		if(e.url == 'event:like'){
+			settings.success.call();
+		}
+	});
+	
+	return wView;
+}
